@@ -1,6 +1,5 @@
 import os
 import os.path
-import re
 import subprocess
 import hashlib
 import pathlib
@@ -74,7 +73,7 @@ def resolve_identifier_to_version(identifier):
           id_val = commit_hash_hash[24:]
           version = json_val['minecraftVersion']
 
-          print('loaded commit ' + version + " (" + commit_message + ") (" + id_val + ")")
+          print('loaded commit ' + version + ' (' + commit_message + ') (' + id_val + ')')
 
           identifier_to_version[id_val] = version
 
@@ -153,7 +152,7 @@ def find_matches(path, search):
 
   # Initially populate the file cache for this path
   if not files:
-    files = list(pathlib.Path(path).rglob("*.java"))
+    files = list(pathlib.Path(path).rglob('*.java'))
     java_file_cache[path] = files
 
   return list(filter(lambda file: does_path_match(file, search), files))
@@ -194,7 +193,7 @@ def calculate_version_weight(version):
   for i in range(0, min(3, len(numbers))):
     number = numbers[i]
     try:
-      # Each "more minor" version number weighs less
+      # Each 'more minor' version number weighs less
       score += int(number) * 10**(3 - i)
     except ValueError:
       continue
@@ -220,7 +219,7 @@ def main():
   num_existing_keys = len(existing_keys)
 
   if num_existing_keys == 0:
-    print("There are no versions available yet, please invoke build-tools at least once.")
+    print('There are no versions available yet, please invoke build-tools at least once.')
     sys.exit()
 
   # Print version choice screen
@@ -248,6 +247,8 @@ def main():
 
   #   print()
 
+  version_spacer_len = 50
+
   # Query all available versions for matching classes
   while True:
     search = input('Enter class search term: ').lower().split(' ')
@@ -256,15 +257,14 @@ def main():
       version_path = existing[version]
       matches = find_matches(version_path, search)
 
-      if len(matches) == 0:
-        print(f'{version}: No matches')
-        continue
+      content = f'{version} ' + ('NO MATCHES' if len(matches) == 0 else '')
+      content += '-' * (version_spacer_len - len(content))
+      print(content)
 
-      print(f'{version}:')
       for match in matches:
         with open(match, 'r') as f:
           contents = f.readlines()
-          print(JavaClass(contents))
+          print(JavaClass(str(match), contents))
 
 if __name__ == '__main__':
   main()
