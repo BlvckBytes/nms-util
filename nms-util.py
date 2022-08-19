@@ -8,6 +8,7 @@ import signal
 import json
 import git
 import io
+import re
 
 from java_class import JavaClass
 
@@ -41,6 +42,7 @@ def resolve_identifier_to_version(identifier):
   global identifier_to_version
 
   if len(identifier_to_version.keys()) == 0:
+    print('Loading commits...')
 
     # Initially clone the repo
     if not os.path.exists(fetch_repo_path):
@@ -73,17 +75,30 @@ def resolve_identifier_to_version(identifier):
           id_val = commit_hash_hash[24:]
           version = json_val['minecraftVersion']
 
-          print('loaded commit ' + version + ' (' + commit_message + ') (' + id_val + ')')
-
           identifier_to_version[id_val] = version
 
       except KeyError:
         pass
 
-    print()
-
   return identifier_to_version[identifier] if identifier in identifier_to_version else None
 
+'''
+Calculates a numeric (floating point) weight of a
+version notation for sorting purposes
+'''
+def calculate_version_weight(version):
+  numbers = re.split(r'\.|-', version)
+  score = 0
+
+  for i in range(0, min(3, len(numbers))):
+    number = numbers[i].replace('pre', '')
+    try:
+      # Each 'more minor' version number weighs less
+      score += int(number) * 10**(4 - i)
+    except ValueError:
+      continue
+
+  return score
 
 '''
 Look at all existing decompile source folders inside of
@@ -116,8 +131,15 @@ def find_existing_decompiles():
       print(f'Could not find a version for {identifier}')
       continue
 
-    print(f'Found available version {ver} ({identifier})')
     results[ver] = curr_path
+
+  # Not as many decompiles available as versions exist
+  if len(results) != len(identifier_to_version):
+    print('You could still download: ')
+    for ind, version in enumerate(sorted(set(identifier_to_version.values()), key=calculate_version_weight)):
+      if not version in results:
+        print(f'{"" if ind == 0 else ", "}{version}', end="")
+    print()
 
   return results
 
@@ -162,7 +184,7 @@ Prompt for a valid class (.java file) by providing a fuzzy finder.
 '''
 def prompt_for_class(path):
 
-  search = input('Class search: ').lower().split(' ')
+  search = input('\nClass search: ').lower().split(' ')
   matches = find_matches(path, search)
 
   # No matches
@@ -181,24 +203,6 @@ def prompt_for_class(path):
 
   choice = prompt_for_number('Select a class: ', 0, len(matches) - 1)
   return matches[choice]
-
-'''
-Calculates a numeric (floating point) weight of a
-version notation for sorting purposes
-'''
-def calculate_version_weight(version):
-  numbers = version.split('.')
-  score = 0
-
-  for i in range(0, min(3, len(numbers))):
-    number = numbers[i]
-    try:
-      # Each 'more minor' version number weighs less
-      score += int(number) * 10**(3 - i)
-    except ValueError:
-      continue
-
-  return score
 
 '''
 Handles the SIGINT control signal
@@ -251,7 +255,7 @@ def main():
 
   # Query all available versions for matching classes
   while True:
-    search = input('Enter class search term: ').lower().split(' ')
+    search = input('\nEnter class search term: ').lower().split(' ')
 
     for version in existing_keys:
       version_path = existing[version]
