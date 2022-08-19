@@ -1,11 +1,14 @@
 import os
 import os.path
+import re
 import subprocess
 import hashlib
-import re
 import pathlib
 import sys
 import signal
+import json
+import git
+import io
 
 from java_class import JavaClass
 
@@ -25,9 +28,6 @@ fetch_repo_cmd = f'git clone --filter=blob:none --no-checkout --single-branch --
 # Command to be executed to receive <commit-hash> <commit message> for each commit
 retrieve_log_cmd = 'git --no-pager log --decorate=no --no-color --pretty=oneline'
 
-# Regex of a minecraft version as denoted in commit-messages
-minecraft_version_regex = r'([0-9]+(\.[0-9]+)+(-pre[0-9]+){0,1})'
-
 # Caching results of parsing commit logs
 identifier_to_version = {}
 
@@ -39,8 +39,9 @@ Tries to resolve an identifier (substring of a hashed commit hash)
 into it's corresponding minecraft-version (from the commit-message).
 '''
 def resolve_identifier_to_version(identifier):
+  global identifier_to_version
 
-  if not identifier_to_version:
+  if len(identifier_to_version.keys()) == 0:
 
     # Initially clone the repo
     if not os.path.exists(fetch_repo_path):
@@ -62,14 +63,25 @@ def resolve_identifier_to_version(identifier):
       # Rehash the commit hash
       commit_hash_hash = hashlib.md5(commit_hash.encode('utf-8')).hexdigest()
 
-      # Run the version regex on the commit message
-      regex_result = re.search(minecraft_version_regex, commit_message)
+      repo = git.Repo(fetch_repo_path)
+      commit = repo.commit(commit_hash)
 
-      # Could not find any matching version pattern
-      if not regex_result or len(regex_result.groups()) == 0:
-        continue
+      try:
+        target_file = commit.tree / 'info.json'
 
-      identifier_to_version[commit_hash_hash[24:]] = regex_result.group(1)
+        with io.BytesIO(target_file.data_stream.read()) as f:
+          json_val = json.load(f)
+          id_val = commit_hash_hash[24:]
+          version = json_val['minecraftVersion']
+
+          print('loaded commit ' + version + " (" + commit_message + ") (" + id_val + ")")
+
+          identifier_to_version[id_val] = version
+
+      except KeyError:
+        pass
+
+    print()
 
   return identifier_to_version[identifier] if identifier in identifier_to_version else None
 
@@ -102,8 +114,10 @@ def find_existing_decompiles():
 
     # Could not determine version
     if not ver:
+      print(f'Could not find a version for {identifier}')
       continue
 
+    print(f'Found available version {ver} ({identifier})')
     results[ver] = curr_path
 
   return results
