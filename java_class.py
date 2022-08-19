@@ -1,3 +1,6 @@
+import re
+
+
 modifiers = ['public', 'static', 'final', 'protected', 'private']
 
 class JavaClass:
@@ -36,12 +39,18 @@ class JavaClass:
       return None
 
     # pop all modifier keywords
-    while kwords[0] in modifiers:
+    while len(kwords) > 0 and kwords[0] in modifiers:
+      kwords.pop(0)
+
+    while len(kwords) > 0 and kwords[0].startswith('@'):
       kwords.pop(0)
 
     # Truncate after (including) = on direct assignments
     if '=' in kwords:
       kwords = kwords[:kwords.index('=')]
+
+    if (len(kwords)) == 0:
+      return None
 
     # Splice off last word (field name)
     return ' '.join(kwords[:-1])

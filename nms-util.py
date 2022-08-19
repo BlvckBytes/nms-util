@@ -2,7 +2,6 @@ import os
 import os.path
 import subprocess
 import hashlib
-import pathlib
 import sys
 import signal
 import json
@@ -10,7 +9,7 @@ import git
 import io
 import re
 
-from java_class import JavaClass
+from commands import search
 
 # Location of the build tools folder where caches are kept
 buildtools_path = '/Users/blvckbytes/Documents/Tools/BuildTools'
@@ -30,9 +29,6 @@ retrieve_log_cmd = 'git --no-pager log --decorate=no --no-color --pretty=oneline
 
 # Caching results of parsing commit logs
 identifier_to_version = {}
-
-# Caching results of listing paths recursively for .java files
-java_file_cache = {}
 
 '''
 Tries to resolve an identifier (substring of a hashed commit hash)
@@ -59,7 +55,6 @@ def resolve_identifier_to_version(identifier):
         continue
 
       commit_hash = line[:line.index(' ')]
-      commit_message = line[line.index(' ') + 1:]
 
       # Rehash the commit hash
       commit_hash_hash = hashlib.md5(commit_hash.encode('utf-8')).hexdigest()
@@ -144,67 +139,6 @@ def find_existing_decompiles():
   return results
 
 '''
-Prompt for a number by printing a prompt each time until a
-valid number between inside of [min;max] has been entered.
-'''
-def prompt_for_number(prompt, min, max):
-  while True:
-    choice = None
-    try:
-      choice = int(input(prompt))
-    except ValueError:
-      choice = None
-
-    if choice is None or choice < min or choice > max:
-      print('Invalid choice, retry.')
-    else:
-      return choice
-
-'''
-Checks if a file path matches search words
-'''
-def does_path_match(file, search):
-  file_name = os.path.basename(file.absolute()).lower()
-  return all(
-    map(lambda x: x.lower() in file_name, search)
-  )
-
-def find_matches(path, search):
-  files = java_file_cache[path] if path in java_file_cache else None
-
-  # Initially populate the file cache for this path
-  if not files:
-    files = list(pathlib.Path(path).rglob('*.java'))
-    java_file_cache[path] = files
-
-  return list(filter(lambda file: does_path_match(file, search), files))
-
-'''
-Prompt for a valid class (.java file) by providing a fuzzy finder.
-'''
-def prompt_for_class(path):
-
-  search = input('\nClass search: ').lower().split(' ')
-  matches = find_matches(path, search)
-
-  # No matches
-  if len(matches) == 0:
-    return None
-
-  # Only a single match
-  if len(matches) == 1:
-    return matches[0]
-
-  # Print choice screen
-
-  print('There are multiple resutls:')
-  for i in range(0, len(matches)):
-    print(f'[{i}]: {matches[i]}')
-
-  choice = prompt_for_number('Select a class: ', 0, len(matches) - 1)
-  return matches[choice]
-
-'''
 Handles the SIGINT control signal
 '''
 def on_forceful_program_exit(signal, frame):
@@ -226,49 +160,22 @@ def main():
     print('There are no versions available yet, please invoke build-tools at least once.')
     sys.exit()
 
-  # Print version choice screen
-  # print('Available versions:')
-  # for i in range(0, num_existing_keys):
-  #   curr_key = existing_keys[i]
-
-  #   print(f'[{i}] -> {curr_key}')
-  
-  # # Prompt until a proper version has been entered
-  # choice = prompt_for_number('Select a version: ', 0, num_existing_keys - 1)
-  # selected_version = existing_keys[choice]
-
-  # print(f'Selected version {selected_version}.')
-
-  # Prompt for classes to look up
-  # while True:
-  #   class_path = prompt_for_class(existing[selected_version])
-
-  #   # Dump class contents to screen
-  #   print(f'Contents of class {os.path.basename(class_path)}:\n')
-  #   with open(class_path, 'r') as f:
-  #     for line in f.readlines():
-  #       print(line, sep='')
-
-  #   print()
-
-  version_spacer_len = 50
+  # Register all available commands here
+  commands = {
+    'search': search
+  }
 
   # Query all available versions for matching classes
   while True:
-    search = input('\nEnter class search term: ').lower().split(' ')
+    command_str = input('\nEnter command: ')
+    command_data = command_str.split(' ')
+    command = command_data[0]
 
-    for version in existing_keys:
-      version_path = existing[version]
-      matches = find_matches(version_path, search)
+    if command not in commands:
+      print('Unknown command, use any of: ' + ','.join(commands.keys()))
+      continue
 
-      content = f'{version} ' + ('NO MATCHES' if len(matches) == 0 else '')
-      content += '-' * (version_spacer_len - len(content))
-      print(content)
-
-      for match in matches:
-        with open(match, 'r') as f:
-          contents = f.readlines()
-          print(JavaClass(str(match), contents))
+    commands[command].invoke(existing, identifier_to_version, command_data[1:])
 
 if __name__ == '__main__':
   main()
