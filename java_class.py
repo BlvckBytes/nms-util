@@ -23,6 +23,10 @@ class JavaClass:
         marker = matchMarker
         break
 
+      # Cannot go any further
+      if line_pointer + 1 == len(contents):
+        return [line_pointer, line_pointer]
+
       line_pointer += 1
 
     return [line_pointer, curr.index(marker) + len(marker)]
@@ -75,6 +79,7 @@ class JavaClass:
   def __init__(self, path, contents):
     self.contents = contents
     self.path = path
+    self.not_a_class = False
 
     # Parse package
     [line_pointer, offs] = JavaClass.seek_line(contents, 0, lambda line: ['package' in line, 'package'])
@@ -83,6 +88,12 @@ class JavaClass:
 
     # Parse class name
     [line_pointer, offs] = JavaClass.seek_line(contents, 0, lambda line: ['class' in line, 'class'])
+
+    # Could not locate class name
+    if line_pointer == len(contents):
+      self.not_a_class = True
+      return
+
     curr = contents[line_pointer]
     self.class_name = curr[offs + 1:curr.index(' ', offs + 2)]
 

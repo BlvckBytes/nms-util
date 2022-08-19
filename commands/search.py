@@ -49,6 +49,9 @@ def invoke(existing_versions, identifier_to_version, args):
         contents = f.readlines()
         jcl = JavaClass(str(match), contents)
 
+        if jcl.not_a_class == True:
+          continue
+
         table.append([version, jcl.package, jcl.class_name, ', '.join(jcl.fields)])
 
   print()
