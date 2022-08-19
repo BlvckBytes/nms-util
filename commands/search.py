@@ -1,6 +1,6 @@
 import os
 import pathlib
-import re
+import tabulate
 
 from java_class import JavaClass
 
@@ -37,17 +37,22 @@ def invoke(existing_versions, identifier_to_version, args):
     print('Please provide at least one word.')
     return
 
-  version_spacer_len = 50
+  table = []
 
   for version in existing_versions:
     version_path = existing_versions[version]
     matches = find_matches(version_path, args)
 
-    content = f'{version} ' + ('NO MATCHES' if len(matches) == 0 else '')
-    content += '-' * (version_spacer_len - len(content))
-    print(content)
-
     for match in matches:
+
       with open(match, 'r') as f:
         contents = f.readlines()
-        print(JavaClass(str(match), contents))
+        jcl = JavaClass(str(match), contents)
+
+        table.append([version, jcl.package, jcl.class_name, ', '.join(jcl.fields)])
+
+  print()
+  print(tabulate.tabulate(
+    table, headers=['version', 'package', 'class', 'fields'],
+    tablefmt='pretty', numalign='left', stralign='left'
+  ))

@@ -152,11 +152,9 @@ def main():
   signal.signal(signal.SIGINT, on_forceful_program_exit)
 
   print('Detecting available decompiled versions...')
-  existing = find_existing_decompiles()
-  existing_keys = list(sorted(existing.keys(), key=calculate_version_weight))
-  num_existing_keys = len(existing_keys)
+  existing = dict(sorted(find_existing_decompiles().items(), key=lambda x: calculate_version_weight(x[0])))
 
-  if num_existing_keys == 0:
+  if len(existing) == 0:
     print('There are no versions available yet, please invoke build-tools at least once.')
     sys.exit()
 
