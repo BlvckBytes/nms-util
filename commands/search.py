@@ -65,6 +65,10 @@ def invoke(existing_versions, identifier_to_version, args):
 
         table.append([version, jcl.package, jcl.class_name, ', '.join(jcl.fields), shorten_path(jcl.path)])
 
+  if len(table) == 0:
+    print('\nNo results.')
+    return
+
   print()
   print(tabulate.tabulate(
     table, headers=['version', 'package', 'class', 'fields', 'path'],

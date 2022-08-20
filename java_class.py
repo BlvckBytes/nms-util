@@ -98,6 +98,12 @@ class JavaClass:
     curr = contents[line_pointer]
     self.class_name = curr[offs + 1:curr.index(' ', offs + 2)]
 
+    # Cannot be a class, as it's identifier is invalid
+    # The class keyword must've come from somewhere else
+    if re.match(r'^([a-zA-Z_$][a-zA-Z\d_$]*)$', self.class_name) is None:
+      self.not_a_class = True
+      return
+
     # Field area starts on the next line
     field_area_start = line_pointer + 1
 
