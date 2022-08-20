@@ -23,11 +23,12 @@ class JavaClass:
         marker = matchMarker
         break
 
+      line_pointer += 1
+
       # Cannot go any further
-      if line_pointer + 1 == len(contents):
+      if line_pointer == len(contents):
         return [line_pointer, line_pointer]
 
-      line_pointer += 1
 
     return [line_pointer, curr.index(marker) + len(marker)]
 
